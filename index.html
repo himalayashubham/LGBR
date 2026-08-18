@@ -1,0 +1,153 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FY 2027-28 State-Month Power Forecast</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f4f7fb;color:#1f2937}
+header{background:#17365d;color:#fff;padding:22px 28px}h1{margin:0;font-size:25px}header p{margin:6px 0 0;opacity:.85}
+main{max-width:1400px;margin:18px auto;padding:0 18px}.card{background:#fff;padding:18px;margin:16px 0;border-radius:10px;box-shadow:0 2px 8px #0001}
+.controls{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}label{font-size:12px;font-weight:bold}
+select,input,button{width:100%;box-sizing:border-box;padding:9px;margin-top:5px;border:1px solid #cbd5e1;border-radius:5px}
+button{background:#17365d;color:#fff;border:0;cursor:pointer;font-weight:bold}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpi{background:#eef5fb;padding:14px;border-radius:8px}.kpi b{display:block;font-size:21px;margin-top:5px}
+table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#eaf2f8}
+.total{font-weight:bold;background:#f3f6f9}.note{font-size:12px;color:#64748b;line-height:1.5}
+canvas{width:100%;height:330px;border:1px solid #e5e7eb;border-radius:7px}
+@media(max-width:900px){.controls,.grid{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<header><h1>Power Demand Forecasting Tool</h1><p>FY 2027-28 • State/UT × Month-wise Energy Requirement & Peak Demand</p></header>
+<main>
+<div class="card">
+<h2>Forecast Controls</h2>
+<div class="controls">
+<div><label>State / UT</label><select id="state"></select></div>
+<div><label>10Y CAGR Weight %</label><input id="w10" value="10"></div>
+<div><label>8Y CAGR Weight %</label><input id="w8" value="15"></div>
+<div><label>6Y CAGR Weight %</label><input id="w6" value="20"></div>
+<div><label>4Y CAGR Weight %</label><input id="w4" value="25"></div>
+<div><label>2Y CAGR Weight %</label><input id="w2" value="30"></div>
+</div>
+<div class="controls" style="margin-top:10px">
+<div><label>Recent Trend Adjustment %</label><input id="adj" value="20"></div>
+<div><label>Output</label><select id="view"><option value="both">Energy + Peak</option><option value="er">Energy Requirement</option><option value="pd">Peak Demand</option></select></div>
+<div><label>&nbsp;</label><button onclick="calculate()">Recalculate</button></div>
+<div><label>&nbsp;</label><button onclick="downloadSelected()">Download Selected State/UT</button></div>
+<div><label>&nbsp;</label><button onclick="downloadAll()" style="background:#5b9bd5">Download All States/UTs</button></div>
+</div>
+<p class="note">All five CAGR periods are retained. No CAGR exclusion rule is applied. State-wise annual projections are calculated independently. Monthly Energy Requirement is allocated so that the 12 months sum to the annual forecast. Monthly Peak Demand is a seasonal maximum profile; the FY peak is the maximum monthly value, not a sum.</p>
+</div>
+
+<div class="card"><h2 id="title">All India – FY 2027-28</h2>
+<div class="grid">
+<div class="kpi">2026-27 Energy Requirement<b id="erA">—</b> MU</div>
+<div class="kpi">2027-28 Energy Forecast<b id="erF">—</b> MU</div>
+<div class="kpi">Energy Growth<b id="erG">—</b></div>
+<div class="kpi">2026-27 Peak Demand<b id="pdA">—</b> MW</div>
+<div class="kpi">2027-28 Peak Forecast<b id="pdF">—</b> MW</div>
+<div class="kpi">Peak Growth<b id="pdG">—</b></div>
+<div class="kpi">Weighted ER CAGR<b id="erc">—</b></div>
+<div class="kpi">Weighted Peak CAGR<b id="pdc">—</b></div>
+</div></div>
+
+<div class="card"><h2>Month-wise Forecast</h2>
+<table><thead><tr><th>Month</th><th>Energy Requirement (MU)</th><th>YoY / Forecast Growth</th><th>Peak Demand (MW)</th></tr></thead>
+<tbody id="monthly"></tbody></table></div>
+
+<div class="card"><h2>Monthly Trend</h2><canvas id="chart" width="1200" height="330"></canvas></div>
+
+<div class="card"><h2>Methodology</h2>
+<p class="note">Annual growth is based on weighted 10Y/8Y/6Y/4Y/2Y CAGR with default weights 10/15/20/25/30%, followed by a 20% recent-trend adjustment. The supplied historical workbook contains annual State/UT data, not historical State/UT month-wise data. Therefore, the current monthly profile is a transparent planning profile. Once historical monthly State/UT data are supplied, the tool can replace this with state-specific historical seasonality and weather sensitivity.</p></div>
+</main>
+<script>
+const entities=[{"name": "All India", "er": [1142928.7409832373, 1213325.3983521517, 1274595.2906658985, 1291010.0587170632, 1275533.7848549199, 1379811.5213085378, 1511846.6351020485, 1626131.7176637205, 1693959.1768419202, 1707493.181580063, 1903972.076657465], "pd": [159541.845297195, 164066, 177022.27263644998, 183803.51253937875, 190197.50914963285, 203013.56567382812, 215888.203221875, 243271.46925664062, 249856.32599376916, 245443.59, 271471.96687956713]}, {"name": "Chandigarh", "er": [1644.744, 1610.442, 1570.8760000000002, 1732.47, 1522.87, 1605.67, 1788.4499999999996, 1789.1783870967743, 1951.8083870967741, 1879.4939192000002, 2079.4080272770984], "pd": [361, 363, 369, 431, 383, 426, 407, 411, 449, 460, 456]}, {"name": "Delhi", "er": [30829.998199999998, 31825.337, 32299.1144, 33086.155, 29559.585806899995, 31127.581999999995, 35143.36860000001, 35501.431772200005, 38255.6467144, 38556.005700300004, 39411.898395585835], "pd": [6342, 6553, 7016, 7409, 6314, 7323, 7695, 7437, 8656, 8442, 8491]}, {"name": "Haryana", "er": [48894.07, 50775.13, 53664.619999999995, 54504.85700000001, 53160.518000000004, 55499.354, 61450.648, 63983.277606396994, 70149.17899999999, 70492.87, 74045.53017398968], "pd": [9262, 9671, 10270, 11001, 10982, 12120, 12768, 13088, 14662, 14084, 16170]}, {"name": "Himachal Pradesh", "er": [8832.371, 9399.125, 9849.528999999999, 10424.008999999998, 10185.87, 12114.896999999999, 12648.899999999998, 12805.29, 13565.538, 13642.1545, 14008.279801338165], "pd": [1499, 1594, 1700, 1786, 1932, 2030, 2071, 2181, 2273, 2310, 2589.3295825328337]}, {"name": "Jammu & Kashmir", "er": [17397.099, 18808.5, 18987.989999999998, 20025.367000000002, 19773.164898, 19957.4, 19639.231799999998, 20039.95683870968, 20374.242806451613, 20185.280000000006, 22372.891617098125], "pd": [2675, 2899, 3080, 3405, 3280, 3075.74, 3137.24, 3181, 3236, 3325, 4077.0288493575854]}, {"name": "Punjab", "er": [53097.979999999996, 54812.03, 55327.6842512785, 56776.43, 58444.70999999999, 62846.44, 69522.04222224999, 69533.21184953219, 77423.13962918433, 75408.85458424501, 84032.70381388236], "pd": [11408, 11705, 12638, 13606, 13148, 13556, 14311, 15292.56, 16058, 16670, 17672]}, {"name": "Rajasthan", "er": [67837.53000000001, 71193.274, 79814.905, 81280.661, 85310.688, 89814.07999999999, 101801.36, 107422.38399999999, 113833.2003, 110656.99099999998, 129928.3757656267], "pd": [10613, 11722, 13276, 14277, 14441, 15784, 17399, 18128, 19165, 19617, 22458.94493744959]}, {"name": "Uttar Pradesh", "er": [107568.64, 120051.094, 117132.91520499998, 122548.98600000002, 124367.38200000001, 129448.45899999997, 144250.758, 148790.9825922971, 165090.15965, 163500.63032999999, 173445.4519108415], "pd": [17183.166, 20274, 20498.113145249998, 22599, 23797, 24965, 27369, 28704, 30618, 31486, 33197]}, {"name": "Uttarakhand", "er": [13069.988000000001, 13457.383, 13844.912, 14472.01, 13826.6636, 15520.608999999999, 15647.205000000002, 15644.2462, 16769.252660000002, 16537.633488, 18303.857100344085], "pd": [2037, 2149, 2216, 2233, 2372, 2468, 2594, 2635, 2863, 2910, 3078]}, {"name": "Chhattisgarh", "er": [23750.2562583237, 25915.06, 26470.609648419748, 30110.861842338294, 30471.70492879051, 31907.718995895455, 39050.678635255164, 39929.89070445252, 43208.34785815415, 42933.35277779517, 51711.42144152226], "pd": [3875.4131343267, 4169, 4444.4376, 4745.9456, 4682, 5019.264700000001, 5398.75, 6148, 6511, 6819, 7947.011769472815]}, {"name": "Gujarat", "er": [103704.00355864002, 109985.43536999999, 116371.86306257933, 113939.82318939216, 111622.17660121022, 123953.22620181467, 137960.41808916803, 145767.84653363738, 151877.5363833382, 156588.1292995476, 173837.50724654383], "pd": [14724.16000734031, 16590, 17053.11080518793, 18436.896800000002, 18528.28335, 19451.402550000003, 21464.3207, 24829.4944, 25588, 26457, 28853.183100000002]}, {"name": "Madhya Pradesh", "er": [65759.501857472, 69925.6478, 76055.73439938153, 76171.799589254, 83436.93073858145, 86500.79909914258, 92326.0638251231, 99301.42857912274, 104445.56070570921, 103711.23309059704, 118224.06990077504], "pd": [11511.698696521098, 12338, 13814.878939692657, 14886.195500000002, 15755.881584, 15916.599999999997, 17346.5997034584, 18252, 19371, 19901.9632535, 22562.83247315519]}, {"name": "Maharashtra", "er": [139293.71817439998, 149759.78399999999, 158294.58232636756, 155166.8840127932, 150678.61147200002, 172822.6628256, 186572.5696001114, 207107.62629403156, 201815.957176508, 202866.51125970544, 238750.90771562976], "pd": [22515.76186707618, 22542, 23864.03762701846, 24550, 25575.50685, 28074.8336, 30935.2883, 31177.975021000002, 30675, 31128, 36858.444347374745]}, {"name": "DDDNH", "er": [8418.58191808, 8700.84, 8860.326283284678, 9102.1766430086, 7720.658736795999, 9432.943223684, 9959.674202000002, 10163.598026692, 10853.078461785999, 11182.045307686021, 11402.586997796863], "pd": [1000.0079999999999, 1026.9, 1055.08629, 1058.4, 1120.4895150000002, 1131.1372800000001, 1278, 1327, 1390, 1416, 1518.922782642721]}, {"name": "Goa", "er": [4320.730381039999, 4117.269, 4295.404557444599, 4349.746842404189, 4083.1513578500508, 4447.90074325, 4674.1537421926, 5111.229224437093, 5410.978018144783, 5448.684234001364, 5948.593325849378], "pd": [545.56, 559, 595.82, 625.3791666666667, 612.1782250000001, 703.2135, 718, 776, 810, 864, 941.4729645706141]}, {"name": "Andhra Pradesh", "er": [54300.99803627551, 58384, 63861.30315305932, 65451.87305442571, 62079.91035143499, 68413.30183843, 72302.41916401092, 80208.65406349099, 79028.30634876052, 81203.58685094006, 93750.65454931876], "pd": [7969.492198382499, 8993, 9459.06518146667, 10224.6441642667, 11193, 12551.058416600436, 13166.8385, 13237.344999999998, 13712, 14005, 17500.810150269335]}, {"name": "Telangana", "er": [53029.16814317224, 60318, 66488.64347138029, 68305.73368970981, 66998.25076736, 70539.15156476699, 77832.196733332, 84622.541903772, 88261.36558320874, 87274.01420206699, 109866.62262584014], "pd": [9186.958755480984, 10298, 10815.32501895, 13168, 13688, 14162.714000000002, 15497, 15622.0575, 17162, 18548, 22224.68263917892]}, {"name": "Karnataka", "er": [66900.07606116642, 67869, 71764.10353254319, 72799.02234387337, 68850.52287208759, 72437.0368250348, 75688.49457477157, 94087.9127260248, 92449.06070996326, 95791.02434912795, 104882.98532806689], "pd": [10260.96865382635, 10857, 12876.971174533335, 13271.5084148, 14366.655, 14830.215, 15828, 17212.480000000003, 18398.225000000002, 18655, 21090.12988953678]}, {"name": "Kerala", "er": [24297.174388573516, 25004, 25015.589400118122, 26315.446432841007, 25118.03162441039, 26579.287613340213, 27747.031946987325, 30943.365504644793, 31624.099966027818, 31157.111748392275, 34069.34760188142], "pd": [4131.588795621921, 3892, 4245.018299916666, 4486.705227416666, 4275.315, 4374.0740000000005, 4698.693199999999, 5283.7078, 5904.416666666666, 5818.880333333334, 6488.404699999999]}, {"name": "Tamil Nadu", "er": [104511.27204549752, 106006, 109481.61641670323, 108816.204412082, 101194.00021066301, 109816.075825348, 114798.40717551, 126163.409144944, 130413.69227043606, 132328.373807522, 143847.06357412523], "pd": [14822.668638745043, 15001, 15483.063400000003, 15727.045935999997, 16263.347, 16891.2249, 17729.2772, 19044.7801, 20784.0827, 19932.0142, 22488.047402762117]}, {"name": "Puducherry", "er": [2547.697395993758, 2669, 2766.2064971114564, 2847.00922885532, 2643.808229751, 2893.5323734989997, 3050.6118328610005, 3456.2924680527385, 3549.0486118252657, 3507.7040901679993, 3901.086037210952], "pd": [370.6192190733093, 390, 439.66306025500006, 470.416275925, 428.828308, 468.65534033333336, 501.1, 524.084778, 548.535828, 560.235814, 620.4354565518814]}, {"name": "Lakshadweep", "er": [48, 48, 46.50000000000001, 46.35000000000001, 55.73500000000001, 55.672000000000004, 64.09495, 63.9308, 66.98125, 72.5093, 82.32981071920588], "pd": [8, 9, 8, 8, 10.701, 10.701, 12.306149999999999, 12.30515, 13.38, 13.9113, 18.811467090369423]}, {"name": "Bihar", "er": [25711.61225091841, 27018.809205412, 30061.4309766554, 31627.14099253599, 34170.57847255399, 36216.084977678045, 39544.89146260961, 41514.14889654171, 44392.95091829569, 47439.74859316289, 51562.111490201256], "pd": [3883.16, 4521, 5114.6, 5835.186007465978, 5995.442351007873, 7154.184501386413, 7851.518998094752, 8048.885319413186, 8077.662456690274, 8597.307487166876, 9475]}, {"name": "Damodar Valley Corporation", "er": [18928.925043689575, 21549.798608112502, 22744.52208400915, 22429.347412376, 21368.043202834997, 23740.77099352742, 26338.542927251787, 26560.251141372242, 25890.70634198979, 24754.93616298848, 28694.07777025715], "pd": [2721, 2895.6856308205834, 3100.209091281961, 3014.4805761685684, 3173.023514574135, 3354.765365973171, 3402.3930362800525, 3451.4988933787076, 3708, 3532.0950853434624, 4206.892936685757]}, {"name": "Jharkhand", "er": [7959.638065157376, 7906.41410794, 8736.7421554326, 8940.783926033002, 9953.335940764, 11147.558687943423, 13277.910116299661, 14407.51839311984, 15202.703956388117, 15434.727853197332, 16335.20560177553], "pd": [1498.37, 1332, 1339, 1395.9146826670933, 1650.6150560703513, 1886.523346446718, 2253.425544196957, 2192.9592136043975, 2295.0753930246333, 2352.598967264534, 2697.066271564148]}, {"name": "Odisha", "er": [26759.357576920003, 28801.47471265, 32144.644189339404, 29692.056501003663, 29848.48643493775, 38338.65036315164, 42631.16688378147, 41358.19886279959, 42881.45633863026, 44199.27531411608, 52762.36306525123], "pd": [4012.4, 4652.35, 5356.69, 5291.8637480666675, 4984.26994976119, 5642.884488683333, 6566.401263531755, 6443.262089689255, 6905, 7147.000443509176, 8828.893351002236]}, {"name": "West Bengal", "er": [47949.22619959637, 50760.1788288675, 51471.24514236137, 52948.28146866699, 51643.59808155399, 54001.2830612242, 60348.3012101715, 67575.72374009847, 71179.98671582613, 72970.23596020558, 75105.13513724566], "pd": [7931, 8137, 9130, 9263.348870447715, 8845.689315219286, 9089.124217480663, 10124.867570046468, 11626.1891478, 12644.80799918, 13108, 13570.38]}, {"name": "Sikkim", "er": [474.43567820337853, 485.7148035, 527.272854791702, 553.839816216, 545.944252862, 609.5525038246791, 587.0612319299204, 543.5896784599847, 572.9911939074443, 554.4310012549204, 668.9240664602145], "pd": [112, 96, 106, 114.68027768056251, 119.616981, 133.456815, 124.16908799999999, 132.9169343019375, 138, 126.246187, 163.70173310470287]}, {"name": "Andaman & Nicobar", "er": [240, 329.84, 346.0799999999999, 346.0799999999999, 346.0799999999999, 335.08, 348.45, 386.11, 425.25, 423.21000000000004, 462.73937603517953], "pd": [40, 58, 58, 58, 58, 60.1, 62.3, 65, 70.7, 71.64, 83.96957677443014]}, {"name": "Arunachal Pradesh", "er": [728.127015682838, 798.6932746344576, 868.5581248708891, 752.714753688916, 718.8040969091096, 874.8329415664821, 915.4437028791627, 1014.25386985075, 1049.53330614, 1194.1230687999998, 1311.9943863185217], "pd": [148, 145, 149.8224, 157.987, 157.896, 196.803, 167, 186.391, 218.09, 223, 241.50181426977173]}, {"name": "Assam", "er": [9020.804059035801, 9094.735513531898, 9566.34893202118, 9803.630380838424, 10191.902084560374, 10843.915452528698, 11464.680275244044, 12445.272925879177, 12842.704764400001, 13616.194568914501, 15161.781686515555], "pd": [1673, 1822, 1865.26, 2193.038, 2072.411, 2126.09, 2378.851, 2413, 2812, 2812, 3181.873972392556]}, {"name": "Manipur", "er": [763.8577024110704, 871.84019665274, 905.1073885100977, 923.6989753281799, 974.17322301104, 1019.2067881059401, 1014.1234028750852, 1022.7754984621126, 1078.7389211199998, 1178.3741066, 1376.4742747396833], "pd": [163.29160000000002, 202, 218.59612, 226.245, 251.851, 258, 248, 257.851, 269, 277, 335.7003529446108]}, {"name": "Meghalaya", "er": [1714.4149223512802, 1555.00001072597, 1957.205255039178, 2111.894792927743, 2031.2775461099152, 2256.155907919583, 2237.262085304382, 2236.1391581616635, 2045.4718662, 2095.2916274, 2795.3421460366226], "pd": [331.12494399999997, 369, 373.611424, 371.49, 384, 408, 404.121, 405, 408.734, 374.07843499999996, 542.4036967658386]}, {"name": "Mizoram", "er": [512.6896296431239, 497.0430500292, 643.070206779467, 646.98885252648, 727.6704895581599, 655.8074790681601, 644.7132823999999, 683.6442961600338, 709.7868398999999, 754.10495589, 1010.79976575], "pd": [98.3, 105, 120.925667, 132.679, 132, 168.893, 159, 162, 167.87, 182.217944, 218.5894002200755]}, {"name": "Nagaland", "er": [757.6727646316052, 794.748057252, 887.9888986341956, 814.1787625506815, 826.4953062647778, 851.717190586629, 926.4355967716964, 920.8767435415266, 938.2846264000001, 996.4841333999999, 1106.3797164722625], "pd": [147.693995, 155, 155.714156, 186.355, 159.7, 173.33599999999998, 167.804, 174.208, 189, 202.426, 216.02456206095567]}, {"name": "Tripura", "er": [1642.3716563616554, 2599.5968128434, 1862.6118707425571, 1537.975801393482, 1484.2655271647602, 1577.8568316072, 1547.46992035, 1691.10605066175, 1939.3531765999996, 1902.7347226399997, 2066.2416792057365], "pd": [284, 342, 298.1232, 319.7201, 316.511, 327.882, 333, 362, 386.428, 377, 405.1302498046653]}];
+const months=["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+const erProfile=[.075,.078,.083,.087,.092,.086,.080,.078,.077,.075,.072,.075];
+const pdProfile=[.94,.97,1,.98,.96,.91,.87,.86,.88,.90,.92,1];
+
+const sel=document.getElementById("state");
+entities.forEach((e,i)=>{let o=document.createElement("option");o.value=i;o.textContent=e.name;sel.appendChild(o);});
+sel.value=0;
+
+function cg(a,b,n){return a>0&&b>0?Math.pow(b/a,1/n)-1:0}
+function fmt(x){return Math.round(x).toLocaleString("en-IN")}
+function pct(x){return (x*100).toFixed(2)+"%"}
+function model(s){
+ let w=[+w10.value,+w8.value,+w6.value,+w4.value,+w2.value].map(x=>x/100);
+ let gs=[cg(s[0],s[10],10),cg(s[2],s[10],8),cg(s[4],s[10],6),cg(s[6],s[10],4),cg(s[8],s[10],2)];
+ let weighted=gs.reduce((a,v,i)=>a+v*w[i],0);
+ let recent=((s[10]/s[9]-1)+(s[9]/s[8]-1))/2;
+ let final=weighted+(recent-weighted)*(+adj.value/100);
+ return {gs,weighted,recent,final};
+}
+
+function csvEscape(v){
+ let s=String(v===undefined||v===null?"":v);
+ return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function getRows(){
+ let e=entities[+state.value], em=model(e.er), pm=model(e.pd);
+ let erFY=e.er[10]*(1+em.final), pdFY=e.pd[10]*(1+pm.final);
+ let erM=erProfile.map(x=>erFY*x), pdM=pdProfile.map(x=>pdFY*x);
+ let rows=[];
+ months.forEach((m,i)=>rows.push([e.name,m,erM[i],pdM[i],em.final,pm.final]));
+ return {e,em,pm,rows};
+}
+function downloadCSV(filename,headers,rows){
+ let csv=[headers,...rows].map(r=>r.map(csvEscape).join(",")).join("\r\n");
+ let blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
+ let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;
+ document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);
+}
+function downloadSelected(){
+ let d=getRows();
+ downloadCSV(
+   d.e.name.replace(/[^a-z0-9]+/gi,"_")+"_FY2027-28_Forecast.csv",
+   ["State/UT","Month","Energy Requirement (MU)","Peak Demand (MW)","Annual ER Growth","Annual Peak Growth"],
+   d.rows
+ );
+}
+function downloadAll(){
+ let rows=[];
+ entities.forEach(e=>{
+   let em=model(e.er),pm=model(e.pd);
+   let erFY=e.er[10]*(1+em.final),pdFY=e.pd[10]*(1+pm.final);
+   let erM=erProfile.map(x=>erFY*x),pdM=pdProfile.map(x=>pdFY*x);
+   months.forEach((m,i)=>rows.push([e.name,m,erM[i],pdM[i],em.final,pm.final]));
+ });
+ downloadCSV("All_State_UT_FY2027-28_Forecast.csv",
+   ["State/UT","Month","Energy Requirement (MU)","Peak Demand (MW)","Annual ER Growth","Annual Peak Growth"],rows);
+}
+function calculate(){
+ let total=+w10.value + +w8.value + +w6.value + +w4.value + +w2.value;
+ if(Math.abs(total-100)>0.001){alert("CAGR weights must total 100%.");return;}
+ let e=entities[+state.value], em=model(e.er), pm=model(e.pd);
+ let erFY=e.er[10]*(1+em.final), pdFY=e.pd[10]*(1+pm.final);
+ erA.textContent=fmt(e.er[10]);erF.textContent=fmt(erFY);erG.textContent=pct(em.final);
+ pdA.textContent=fmt(e.pd[10]);pdF.textContent=fmt(pdFY);pdG.textContent=pct(pm.final);
+ erc.textContent=pct(em.weighted);pdc.textContent=pct(pm.weighted);
+ title.textContent=e.name+" – FY 2027-28";
+ let erM=erProfile.map(x=>erFY*x);
+ let pdM=pdProfile.map(x=>pdFY*x);
+ monthly.innerHTML="";
+ months.forEach((m,i)=>{
+   let tr=document.createElement("tr");
+   tr.innerHTML=`<td>${m}</td><td>${fmt(erM[i])}</td><td>${pct(em.final)}</td><td>${fmt(pdM[i])}</td>`;
+   monthly.appendChild(tr);
+ });
+ let t=document.createElement("tr");t.className="total";
+ t.innerHTML=`<td>FY 2027-28 Total / Maximum</td><td>${fmt(erM.reduce((a,b)=>a+b,0))}</td><td>${pct(em.final)}</td><td>${fmt(Math.max(...pdM))}</td>`;
+ monthly.appendChild(t);
+ draw(erM,pdM);
+}
+function draw(erM,pdM){
+ let c=document.getElementById("chart"),x=c.getContext("2d"),W=c.width,H=c.height;x.clearRect(0,0,W,H);
+ let max=Math.max(...erM), min=Math.min(...erM); let X=i=>70+i*(W-110)/11, Y=v=>H-45-(v-min)*(H-85)/(max-min||1);
+ x.strokeStyle="#d1d5db";x.fillStyle="#475569";x.font="12px Arial";
+ for(let i=0;i<5;i++){let v=max-i*(max-min)/4,yy=Y(v);x.beginPath();x.moveTo(55,yy);x.lineTo(W-30,yy);x.stroke();x.fillText(fmt(v),5,yy+4)}
+ x.beginPath();erM.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));x.strokeStyle="#5b9bd5";x.lineWidth=3;x.stroke();
+ let pmax=Math.max(...pdM),pmin=Math.min(...pdM),PY=v=>H-45-(v-pmin)*(H-85)/(pmax-pmin||1);
+ x.beginPath();pdM.forEach((v,i)=>i?x.lineTo(X(i),PY(v)):x.moveTo(X(i),PY(v)));x.strokeStyle="#70ad47";x.lineWidth=3;x.stroke();
+ months.forEach((m,i)=>x.fillText(m,X(i)-10,H-15));
+ x.fillStyle="#5b9bd5";x.fillText("Energy Requirement",W-220,20);x.fillStyle="#70ad47";x.fillText("Peak Demand",W-220,38);
+}
+calculate();
+</script></body></html>
